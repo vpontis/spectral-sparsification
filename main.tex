@@ -1,0 +1,450 @@
+\documentclass[12pt,twoside]{article}
+
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumerate}
+
+\newtheorem{thm}{Theorem}
+\newtheorem{lemma}[thm]{Lemma}
+
+\newcommand{\sectionline}{
+  \nointerlineskip \vspace{\baselineskip}
+  \hspace{\fill}\rule{0.5\linewidth}{.7pt}\hspace{\fill}
+  \par\nointerlineskip \vspace{\baselineskip}
+}
+
+\newcommand{\mbf}{\mathbf}
+\newcommand{\mrm}{\mathrm}
+
+\newenvironment{centered}[0]{
+  \begin{list}{}{
+    \setlength{\topsep}{0pt}
+    \setlength{\leftmargin}{.25in}
+    \setlength{\rightmargin}{.25in}
+    \setlength{\listparindent}{\parindent}
+    \setlength{\itemindent}{\parindent}
+    \setlength{\parsep}{\parskip}
+  }
+  \item[]}{\end{list}}
+
+
+\title{A Survey of Spectral Sparsification}
+\date{\today}
+\author{Robi Bhattacharjee - robibhat@mit.edu \\
+        Victor Pontis - vpontis@mit.edu }  
+
+\begin{document}
+
+\maketitle
+
+\abstract{
+A spectral sparsification algorithm takes a graph as input and returns a new graph with few edges that preserves up to an approximation a term called the Laplacian of the graph. The Laplacian of the graph relates to the connectivity of the graph. The Laplacian is a strong property so graphs with similar Laplacians also have similar cut values as well as other important properties. 
+  
+In this paper we will give a background to spectral graph theory to a reader with an undergraduate course in computer science. We will give the necessary background work, including material in linear algebra and effective resistance, needed for the analysis of the algorithms presented. We will then describe two sampling algorithms: one that considers vertex degree and one that considers effective resistance giving intuition behind both algorithms.
+}
+
+\section{Background}
+
+\subsection{Introduction to Spectral Sparsification}
+
+A sparse graph is a graph where the number of edges is on the order of the number of vertices (up to a logarithmic factor). A sparsification algorithm takes a general graph and returns a sparse graph that is an approximation of the input graph. A good sparsification algorithm may produce a graph with $\tilde{O}(n)$ edges when a complete graph can have up to $n^2/2$ edges. Benczur and Karger introduced the notion of graph sparsifiers in their 1996 Paper ``Appoximating $s-t$ Minimum Cuts in $\tilde{O}(n^2)$ time" \cite{benczur-karger-mincut} with the notion of cut sparsifiers. Their paper defines a class of sparsification algorithms called cut sparsifiers which return a sparse graph that approximately preserves the cut between any two sets of vertices. They used their sparsification algorithm to improve runtimes on mincut and maxflow. 
+
+In this paper we will be studying spectral sparsification algorithms. Spectral sparsification can be thought of as a generalization of cut sparsifiers that preserves a term called the Laplacian, $L_G$, of a graph $G$ as defined here
+
+\begin{equation}
+\label{eqn:laplacian-matrix-def}
+L_G(u,v) = 
+            \begin{cases} 
+                -w_{(u,v)}           &\mbox{if } u \not= v \\
+                \sum_z w_{(u,z)}     &\mbox{if } u = v. 
+            \end{cases}
+\end{equation}
+
+we can also write the Laplacian in its quadratic form
+
+\begin{equation}
+\label{eqn:laplacian-vertex-def}
+x^T L_G x = \sum w_{(u,v)} (x_u-x_v)^2
+\end{equation}
+
+We can see from the quadratic form of the Laplacian that it is a generalization of cut sparsificiation. Consider any set $S \subset V$ and let $x_S$ be the vector defined as $x(u) = 1$ if $u \in S$ and $x(u) = 0$ otherwise. Then it is clear that $x_S^T L_G x$ is just equal to the sum of the weights of the edges that span $S$ to $V - S$, which we will denote in the future as $E(S, V-S)$. This shows that spectral sparsifiers are at least as strong as cut sparsifiers (they are in fact strictly stronger, but this requires more analysis). 
+ 
+Next, let $\tilde{G}$ be a graph with the same vertices as $G$. $\tilde{G}$ is said to be a \emph{$\sigma$-spectral-sparsifier} if for all $x$
+
+\begin{equation}
+\label{eqn:spectral-sparsifier-def}
+\frac{1}{\sigma}x^T L_{\tilde{G}} x \leq x^T L_G x \leq \sigma x^T L_{\tilde{G}} x
+\end{equation}
+
+
+Let $\tilde{E}$ be the set of edges (with weights) of $\tilde{G}$. Then $\tilde{G}$ is said to be a \emph{$\sigma$-cut-sparsifier} if for every $S \subset V$
+
+\begin{equation}
+\label{eqn:cut-sparsifier-def}
+\frac{1}{\sigma}\Sigma_{e \in \tilde{E}(S,V-S)} w_e \leq \Sigma_{e \in E(S,V-S)} w_e \leq \sigma \Sigma_{e \in \tilde{E}(S,V-S)}
+\end{equation}
+
+It is worth noticing that all spectral sparsifiers are also cut sparsifiers. This can easily be seen by plugging in $x_S$ for any $S \subset V$ into (\ref{eqn:spectral-sparsifier-def})
+
+For the rest of the paper, we will only be considering the sparsification of unweighted graphs. Sparisification of weighted graphs is a bit more involved but heavily draws on the concepts and algorithms used in unweighted graphs. In some cases we can simply scale unweighted graph algorithms to work on weighted graphs. 
+
+\subsection{Linear Algebra Background} 
+
+Here we go over some linear algebra that will be useful for the anlysis of graphs and sparsification algorithms.
+
+The spectral theorem for Hermitian Operators in linear algebra states that for any symmetric matrix, all of its eigenvalues are real and that its eigenvectors can be chosen to form an orthonormal basis of its domain. This theorem is central to our analysis of spectral sparsification.
+
+In addition to the spectral theorem, we also use a list of basic linear algebra facts and notation listed below.
+
+\begin{enumerate}
+    \item If a symmetric matric has orthonormal eigenvectors $x_1, x_2, ... , x_n$ with eigenvalues $0 = \lambda_1 < \lambda_2 < \cdots  < \lambda_n$ then for all $x \neq 0$, $\lambda_1 \leq \frac{x^TAx}{x^Tx} \leq \lambda_n$.
+    \item For a given matrix $M$ we use $\lambda_i(M)$ to denote the $i$th smallest eigenvalue. This definition will only be applied to matrices with real eigenvalues.
+    \item The 2-norm of a symmetric matrix $||A||$ is equal to the absolute value of its largest eignvalue.
+\end{enumerate}
+
+
+\subsection{Graph Properties}
+
+A closely related topic to sparsification is conductance. The conductance of a cut in a graph is a measure of the connectivity among vertices on both sides of the cut and the number of edges crossing the cut. A set of vertices will have low conductance if there are a lot of edges on both sides of the cut but not many edges in the cut. We define the volume of a set $S$ of vertices so that $\text{Vol}(S)=\sum_{i\in S} d_i$. Then we have a definition for the conductance of a set of verices:
+
+\begin{equation}
+\label{eqn:conductance-def}
+\Phi_G(S) = \frac{|E(S,V-S)|}{\text{min}(\text{Vol}(S),\text{Vol}(V-S))}
+\end{equation}
+
+We then get the conductance of the full graph by minimizing over all $S$ such that $S$ is a nonempty set of vertices
+
+\begin{equation}
+\Phi_G = \underset{\emptyset \not= S \subset V}{\text{min}} \Phi_G(S)
+\end{equation}
+
+Conductance is closely related to the Laplacian of a graph as we show in Cheeger's Inequality below. Before describing this, we first define the normalized Laplacian. The normalized Laplacian is the matrix
+
+\begin{equation}
+\mathcal{L}_G = D^{-1/2}L_GD^{-1/2}
+\end{equation}
+
+Where $D$ is the diagonal matrix defined by $D(u,v) = 0$ if $u \neq v$ and $D(v,v) = d_v$ ($d_v$ denotes the degree of vertex $v$). 
+
+The normalized laplacian of a graph satisfies a similar equation to (\ref{eqn:laplacian-vertex-def}):
+
+\begin{equation}
+\label{eqn:norm-laplac}
+x^T \mathcal{L}_G x = \sum_{(u,v) \in E} (\frac{x_u}{\sqrt{d_u}}-\frac{x_v}{\sqrt{d_v}})^2
+\end{equation}
+
+\section{Sampling by vertex degree}
+
+\subsection{Cheeger's Inequality} % and intutition
+Cheeger's Inequality connects the conductance $\Phi_G$ with $\lambda_2(\mathcal{L})$. It states that
+
+\begin{thm}
+$2\Phi_G \geq \lambda_2(\mathcal{L}) \geq \Phi_G^2/2$
+\end{thm}
+
+\begin{proof}
+First, consider the set $S$ such that $\Phi_S = \Phi_G$ and such that $\text{Vol}(S) \leq \text{Vol}(V - S)$. Let $e,f > 0$ be positive real numbers that will be specified later. Then let $x$ denote the vector defined by
+
+\begin{equation*}
+x(v)  = 
+            \begin{cases}
+                e\sqrt{d_v}     &\mbox{if $v \in S$} \\
+                -f\sqrt{d_v}    &\mbox{if $v \notin S$} \\
+            \end{cases}
+\end{equation*}
+
+Then it follows from equation (\ref{eqn:norm-laplac}) that
+
+\begin{equation*}
+\frac{x^T\mathcal{L}x}{x^Tx} = \frac{(e+f)^2|E(S,V-S)|}{e^2\text{Vol}(S) + f^2\text{Vol}(V - S)}
+\end{equation*}
+
+We now select $e,f$ such that $\sum_{v \in S} e d_v = \sum_{v \in V-S} f d_v$. This implies that $x$ is orthogonal to the vector $y$ defined by $y(v) = \sqrt{d_v}$. Therefore, we must have that $\frac{x^T \mathcal{L} x}{x^T x} \geq \lambda_2(\mathcal{L})$ since $y$ can easily be verified to be the vector with eigenvalue 0 with respect to $\mathcal{L}$. However, we have that
+
+\begin{equation*}
+\lambda_2(\mathcal{L}) \leq \frac{x^T\mathcal{L}x}{x^Tx}  
+    = \frac{(e+f)^2|E(S,V-S)|}{e^2\text{Vol}(S) + f^2\text{Vol}(V - S)} 
+    = \frac{(e+f)^2|E(S,V-S)|}{(e + f)e\text{Vol}(S)} 
+    = \frac{(e+f)\Phi_G}{e} \leq 2\Phi_G
+\end{equation*}
+
+ 
+By substituting that $\sum_{v \in S} e d_v = \sum_{v \in V-S} f d_v$ and by using the fact that since $\text{Vol}(S) \leq \text{Vol}(V - S)$, $e \geq f$. This gives us one side of the inequality. 
+ 
+The other side of the inequality has a more complicated proof, so we will only provide a bit of intuition as to how the proof goes. The basic idea is to start with the eigenvector $x$ such that $\mathcal{L}x = \lambda_2x$. Then, sort the vertices $v$ based on how large $x(v)$ is to get $x(v_1) \leq x(v_2) \leq \cdots \leq x(v_n)$. The idea then becomes to show that we can find $i$ such that $\lambda_2 \geq \Phi_{S_i}^2/2$ where $S_i = \{v_1, v_2, \cdots, v_i\}$. The intuition behind this is somewhat analogous to the proof of the other direction in the inequality. We want to group large values of $x(v)$ together and smaller values of $x(v)$ together so that the terms in the laplacian that account for $\lambda_2$, there has to be a decent number of edges spanning from $S_i$ to $V - S_i$. 
+
+\end{proof}
+
+\subsection{Algorithm}
+
+In this section we present an algorithm for generating a spectral sparsifier $\tilde{G}$ of an unweighted graph $G$ with high conductivity. The basic idea of the algorithm is to independently select edge $e$ with probability $p_e$. If an edge is selected, it is added into $\tilde{G}$ and given a weight of $1/p_e$. The main result is that for an accurate selection of $p_e$ (which will be detailed later), the graph $\tilde{G}$ will be a good spectral sparisfier of $G$ with high probability.
+
+Rigorizing the above, define $\text{Sample}(G, \epsilon, p, \lambda)$ where $G$ is a graph with $\lambda_2(L_G) = \lambda$, and $p, \epsilon$ are real numbers between 0 and 1/2 to be the following routine.
+
+\begin{centered}
+    \begin{enumerate}
+        \item Create $\tilde{G}$ to be a graph with the same vertices as $G$ and initially no edges
+        \item Set $k = \text{max}(\log{(3/p)}, \log{n})$
+        \item Set $\Upsilon = (\frac{12k}{\epsilon\lambda})^2$
+        \item For every $(i,j) \in E$ set $p_{i,j} = \text{min}(1, \frac{\Upsilon}{\text{min}(d_i,d_j)})$
+        \item For every $(i,j) \in E$ place an edge of weight $1/p_{i,j}$ between vertices $i$ and $j$ in $\tilde{G}$ with probaiblity $p_{i,j}$
+        \item Output $\tilde{G}$
+    \end{enumerate}
+\end{centered}
+
+This routine basically selects edges with probabilities inversely proportional to the degrees to their vertices. The constant $\Upsilon$ is necessary to ensure that $\tilde{G}$ does not deviate too far from $G$. We will now present the main result about this algorithm.
+
+\subsection{Analysis}
+
+\begin{thm}
+$\tilde{G} = \text{Sample}(G, \epsilon, p, \lambda)$ satisfies with probability at least $1 - p$
+
+\begin{enumerate}
+    \item $\tilde{G}$ is a $(1 + \epsilon)$-approximation of $G$
+    \item $\tilde{G}$ has at most $\frac{288nk^2}{\epsilon^2\lambda^2}$ edges
+\end{enumerate}
+\end{thm}
+
+The proof of this theorem is fairly involved, but draws on many simple and intuitive concepts. Instead of providing a fully rigorized proof (which one can easily find in \cite{spielman-teng-spectralsparse}), we will provide a proof sketch that gives intuition instead of rigor.
+
+At a very high level, the basic idea of the proof is to prove that
+
+\begin{enumerate}
+    \item $\tilde{G}$ is NOT a $(1 + \epsilon)$ approximation of $G$ with probability at most $2p/3$
+    \item $\tilde{G}$ has strictly more than $\frac{288nk^2}{\epsilon^2\lambda^2}$ edges with probability at most $p/3$.
+\end{enumerate}
+
+Since $P(A \cup B) \leq P(A) + P(B)$, the probability that $\tilde{G}$ doesn't satisfy the desired properties would be at most $p$ meaning that it works with probability $1-p$. We now show how to obtain the two claims above. 
+
+\begin{lemma}
+Let $\tilde{L}$ denote the Laplacian of $\tilde{G}$. Then if $||D^{-1/2}(L-\tilde{L})D^{-1/2}|| \leq \delta$, $\tilde{G}$ is a $\sigma$-approxiamtion of $G$ where $\sigma = \frac{\lambda}{\lambda - \delta}$
+\end{lemma}
+
+
+\begin{proof}
+
+We desire to show that $x^TLx$ is close to $x^T\tilde{L}x$ for all $x$. A key observation is that for both $L$ and $\tilde{L}$, the vector $t = (1,1,1,...1)$ satisfies $t^TLt = t^T\tilde{L}t = 0$. Consequently, let $z$ be the unique vector such that $x = z + ct$ for some scaler $c$ and such that $z \dot t = 0$. Then it follows that $x^TLx = z^TLz$ and $z^T\tilde{L}z = x^T\tilde{L}x$. Using this, we have the following:
+
+\begin{equation*}
+x^T\tilde{L}x = z^T\tilde{L}z = z^TLz + z^T(\tilde{L} - L)z
+\end{equation*}
+
+We now make the substitution $y = D^{1/2}z$ yielding that
+
+\begin{equation*}
+x^T\tilde{L}x = y^TD^{-1/2}LD^{-1/2}y + y^TD^{-1/2}(\tilde{L} - L)D^{-1/2}y
+\end{equation*}
+
+However, it is easy to see that $x^TLx = y^TD^{-1/2}LD^{-1/2}y$. Also, the absolute value of $y^TD^{-1/2}LD^{-1/2}y$ is at least $\lambda|y|^2$ by the fact that $y$ is orthogonal $D^{1/2}t$ which is the eigenvector of $D^{-1/2}LD^{-1/2}$ that corresponds to the eigenvalue 0 and by the fact that $\lambda$ is the smallest non-zero eigenvalue of $D^{-1/2}LD^{-1/2}$. Also, the absolute value of $y^TD^{-1/2}(\tilde{L} - L)D^{-1/2}y$ is at most $\delta|y|^2$. This means the ratio of $y^TD^{-1/2}(\tilde{L} - L)D^{-1/2}y$ to $y^TD^{-1/2}LD^{-1/2}y$ is at most $\delta/\lambda$. From this, it immediately follows that
+
+\begin{equation*}
+x^TLx(1 - \delta/\lambda) \leq x^T\tilde{L}x \leq x^TLx(1 + \delta/\lambda)
+\end{equation*}
+
+which immediately gives us our desired result. 
+
+This lemma suggests that in order to prove the original theorem, since we alredy know that $\lambda_2(\mathcal{L}) = \lambda$, it suffices to analyze the distribution of $||D^{-1/2}(\tilde{L} - L)D^{-1/2}||$. 
+
+To do this, we notice that $||D^{-1/2}(\tilde{L} - L)D^{-1/2}|| \leq ||D^{-1/2}(\tilde{A} - A)D^{-1/2}|| + ||D^{-1/2}(\tilde{D} - D)D^{-1/2}||$ by the triangle inequality and by the fact that $A + L = D$ and $\tilde{A} + \tilde{L} = \tilde{D}$ where $A$ denotes the adjacency matrix and $D$ denotes the diagonal matrix (with diagonal entries vertex degrees).We analyze each of those terms separately. The motivation for doing this will become clear when we analyze the term $||D^{-1/2}(\tilde{A} - A)D^{-1/2}||$
+
+Finding the distribution of $||D^{-1/2}(\tilde{D} - D)D^{-1/2}||$ is relatively easy. Suppose $d_1, d_2, ... d_n$ are the diagonal entries of $D$ and $\tilde{d_1}, \tilde{d_2}, \tilde{d_3}, ..., \tilde{d_n}$ be the diagonal entries of $\tilde{D}$. It follows quite easily that the largest eigenvalue of $D^{-1/2}(\tilde{D} - D)D^{-1/2}$ will just be the maximum value of $|(\tilde{d_i} - d_i)/d_i)| = |1 - \frac{\tilde{d_i}}{d_i}|$. Now each $\tilde{d_i}$ can be expressed as the sum of a bunch of random variables (namely, the weights of the edges of vertex $i$), and as a result of this we can get a bound on $Pr[||D^{-1/2}(\tilde{D} - D)D^{-1/2}|| \geq \epsilon\lambda/3] \leq p/3$ without too much difficulty. 
+
+The distribution of $||D^{-1/2}(\tilde{A} - A)D^{-1/2}||$ is a little more tricky to analyze. First of all, for any matrix $B$, conjugating by an invertible matrix $C$ to get $CBC^{-1}$ preserves the eigenvalues of $B$. Consequently, it is equivalent to analyze the distribution of $||\Delta|| = ||D^{-1}(\tilde{A} - A)||$.  
+Let the eigenvalues of $\Delta$ be $f_1, f_2, \cdots f_n$ and let $m \geq 2$ be an even integer. Then the eigenvalues of $\Delta^{m}$ are $f_1^m, f_2^m, ... f_n^m$. Now suppose $f_1$ is the eigenvalue with the largest absolute value. Then it follows that $f_1^m \leq \sum_i f_i^m$ which means that $|f_1| \leq (\sum_i f_i^m))^{1/m}$. The key observation is that $\sum_i f_i^m = \text{Tr}(\Delta^m)$. Substituting this, we get that
+
+\begin{equation}
+||D^{-1}(\tilde{A} - A)|| \leq (\text{Tr}(\Delta^m))^{1/m}
+\end{equation}
+
+This equation is very useful because for any $r$,
+
+\begin{equation}
+\text{Pr}[||D^{-1}(\tilde{A} - A)|| > r] \leq \text{Pr}[(\text{Tr}(\Delta^m))^{1/m} > r] = \text{Pr}[(\text{Tr}(\Delta^m) > r^m]
+\end{equation}
+
+\end{proof}
+
+The nice thing about this is that we no longer have to mess around with eigenvalues and only care about the trace of the matrix $\Delta^m$. In the final paper, we will analyze the term $\text{Tr}[\Delta^m]$ further by relating $\Delta^m$ to $m$ iterations of a stochastic process in $\tilde{G} - G$. 
+
+
+\section{Sampling by Effective Resistance}
+
+% effective resistance overview 
+\subsection{Effective Resistance Background}
+
+The effective resistance in graphs derived from electrical networks shows great promise as a new, powerful measure of distance and gives important contributions to the analysis of spectral graph theory. In the overview, we will define effective resistance by modelling the graph as an electrical network, connect effective resistance to spectral graph theory, and look at the relationship between commute time and effective resistance. Then we examine an algorithm that samples edges with probabilities proportional to their effective resistance and give an analysis. 
+
+\subsubsection{Calculating Effective Resistance}
+
+% laws of effective resistance 
+
+In order to understand effective resistance, we need to remember two laws from electromagnetism, Ohm's and Kirchoff's. Ohm's Law states that $V=ir$ if $V$ is voltage, $i$ current, and $r$ resistance. Kirchoff's Law requires the conservation of current, stating the current into any vertex is equal to the current leaving the vertex. The effective resistance between two vertices $u$ and $v$ is then equal to the voltage differential between the two when a unit of current is from $u$ to $v$.\footnote{This definition of effective resistance may seem a little strange at first but it relates to the analysis in \cite{wisc-effective-resistance} which gives a nice overview of effective resistance.}
+
+% calculating effective resistance 
+
+Calculating the effective resistance on a small circuit is easy. When we have resistors in parallel we simply add them and when we have resistors in parallel we combine their inverses in a formula you should remember from electromagnetism. We can then apply these two methods to combine all of the resistors into one, yielding the effective resistance between two vertices. This gets much more complicated as the circuit gets larger and we will give another expression of effective resistance in terms of eigenvalues of the Laplacian. 
+
+% effective resistance and laplacian/connectivity
+% link effective resistance with laplacian or connectivity
+
+\subsubsection{Connection to Laplacian}
+
+Intuitively we can think of effective resistance as a property that would be preserved with the Laplacian because they are both local properties that look at the entire graph. In the Laplacian you can weigh $\mathbf{x}$ so that it picks out vertices and edges and makes them important. You can do this with every edge so it locally makes every part of the graph important. Now consider the effective resistance between $u$ and $v$, any edge on the graph that we add will decrease the effective resistance. The effect of the decrease in resistance will be larger the closer the new edge is to $u$ and $v$. Effective resistance at each considers the whole graph but places importance on edges in the nearby subgraph.
+
+We can relate the idea of effective resistance to the Laplacian and spectral sparsification. We can define a matrix $B$ such that $B_{m \times n}$ is the \textit{signed edge-vertex incidence matrix} \cite{spielman-effective-resistance} where 
+
+\begin{equation}
+\label{def:resistance-b}
+B(e,v)  = 
+            \begin{cases}
+                1     &\mbox{if $v$ is $e$'s head} \\
+                -1    &\mbox{if $v$ is $e$'s tail} \\
+                0     &\mbox{otherwise} 
+            \end{cases}
+\end{equation}
+
+and $W_{m \times m}$ is defined as 
+
+\begin{equation}
+\label{def:resistance-w}
+W(e,e) = w_e
+\end{equation}
+
+which is the diagonal marix with the weight of an edge at each diagonal. We can then define our Laplacian $L$ as $B^T W B$. 
+
+Kirchoff's law then tells us $B^T \mathbf{i} = \mathbf{i}_{\text{ext}}$ where $\mathbf{i}_\text{ext}$ is a vector of the currents injected at the vertices. And then Ohm's law tells us that the current of an edge is equal to the potential difference across it divided by the resistance or, in an another expression, multiplied by the conductance, giving us $\mathbf{i} = WB \mathbf{v}$. Combining these two laws gives us a relation between the voltage difference and the current injected at the vertices, $\mathbf{i}_\text{ext} = B^T(WB\mathbf{v}) = L\textbf{v}$. This gives us an intuitive notion of the relationship between the effective resistance the Laplacian of a graph.
+
+% todo: elaborate more on the connection between effective resistance and laplacian
+
+% psuedoinverse
+
+Now we define the pseduoinverse of the Laplacian and find the effective resistance in terms of the pseudoinverse. The Laplacian has an eigenvalue of 0 so its discriminant is zero making it non-invertible. But we are able to take the pseudoinverse so that $LL^+$ is a projection into the space spanned by the Laplacian. Recall from the spectral theorem that the Laplacian can be decomposed to eigenvectors in the following manner
+
+\begin{equation}
+L = \sum_{i=1}^{n-1} \lambda_i u_i u_i^T
+\end{equation}
+
+where the $\lambda_i$'s are eigenvalues and the $u_i$'s are their corresponding orthonormal eigenvectors. We can then define the \textit{Moore-Penrose Pseudoinverse} of $L$ as
+
+\begin{equation}
+L^+ = \sum_{i=1}^{n-1} \frac{1}{\lambda_i}u_i u_i^T
+\end{equation}
+
+and we also get the following properties from the pseudoinverse
+
+$$
+L^+ \mathbf{w} = \mathbf{0}
+$$
+
+and for all $w \perp \mathbf{1}$
+
+$$
+L^+ \mbf{w} = \mbf{v} \text{ such that } L\mbf{v} = \mbf{w} \text{ and } \mbf{v} \perp \mbf{1}
+$$
+
+We are then able to express the effective resistance between vertices $a$ and $b$, $R_{ab}$ as vectors in the pseudoinverse of the Laplacian as follows
+
+\begin{eqnarray}
+R_{ab} &=& (\mbf{e}_a - \mbf{e}_b)^T L^+ (\mbf{e}_a - \mbf{e}_b) \\
+       &=&  L^+_{aa} -2L^+_{ab} + L^+_{bb} 
+\end{eqnarray}
+
+Through another formulation we can see that 
+
+\begin{equation}
+R_e = B L^+ B^T(e,e)
+\end{equation}
+
+where $R_e$ is the effective resistance of edge $e$.
+
+% commute time stuff, probably not necessary
+\subsubsection{Connection to commute time}
+
+We now define the commute time on an graph between two vertices and relate it to effective resistance. In a random walk on a graph we start at one vertex and at each step we randomly choose an outgoing edge to follow. The hit time between $u$ and $v$ is the expected time a random walk will take to traverse from $u$ to $v$. The commute time from $u$ to $v$ is the sum of the hit time from $u$ to $v$ and the hit time from $v$ to $u$. $u$ and $v$ have a small commute time if there are a lot of short paths between the two vertices. 
+
+We are able to relate commute time to effective resistance with the following lemma
+
+\begin{lemma}
+\label{lem:commute-time-effective-resist}
+If we look at two vertices $u$ and $v$ and call the commute time $C_{uv}$ and the effective resistance $R_{uv}$ we can get a relation between the two in the form $C_{uv} = 2m R_{uv}$.
+\end{lemma}
+
+We will not prove this Lemma but it it is proven in \cite{wisc-effective-resistance} and gives us a nice connection between commute time and effective resistance.
+
+In the final version of the paper we will show how commute time gives a good notion of graph connectivity so that if we preserve commute time a lot of other properties are also preserved.
+
+
+\subsection{Algorithm}
+
+Spielman and Srivastava introduced an alternative sampling algorithm for generating a spectral sparsifier of $O(n\log n/\epsilon^2)$ edges in nearly linear time based on effective resistance \cite{spielman-effective-resistance}. Their paper defines a sparsify algorithm that runs as follows
+
+\begin{centered}
+$H$ = \textbf{Sparsify}$(G,q)$
+
+Choose a random edge $e$ with probability $p_e$ proportional to $w_e R_e$ and add $e$ to $H$ with weight $w_e/qp_e$. Take $q$ samples independently with replacement, summing weights if an edge is chosen more than once. 
+%\rule{10}{10}
+\end{centered}
+
+The paper also proves the following theorem
+
+\begin{thm}
+Suppose we have $G$ and $H$ = \normalfont{\textbf{Sparsify}}$(G, Q)$ and $1/\sqrt{n} < \epsilon \leq 1$. If $q=O(n\log n /\epsilon^2)$ and $n$ is sufficiently large than with probability at least half $H$ is a $(1+e)$-spectral approximation of $G$.
+\end{thm}
+
+It makes sense to sample with probability inversely related to effective resistance because this corresponds to the effective conductance of an edge which is proportional to how strong the edge connects the two vertices. If the effective conductance is high we know that the edge very important in the connectivity of a graph and we must include it. 
+
+\subsection{Analysis}
+% todo: high level overview of how the algorithm works
+
+The proof of correctness for the sampling algorithm involves a lot of linear algebra and here we will go over but not prove a few of the key lemmas. 
+
+\begin{lemma}[Projection Matrix]
+(i) $\Pi$ is a projection matrix. (ii) $im(\Pi) = im(W^{1/2}B) = W^{1/2} \mathbb{B}$. (iii) The eigenvalues of $\Pi$ are 1 with multiplicity $n-1$ and 0 with multiplicity $m-n+1$. (iv) $\Pi(e,e) = ||\Pi(.,e)||^2$. $W$ is defined in  (\ref{def:resistance-w}) and $B$ is defined in (\ref{def:resistance-b}). 
+\end{lemma}
+
+This projection matrix allows us to get a bound on the Laplacian through the following lemma
+
+\begin{lemma}
+Suppose $S$ is a nonnegative diagonal matrix such that 
+$$
+||\Pi S \Pi - \Pi \Pi ||_2 \leq \epsilon
+$$
+Then 
+$$
+\forall x \in \mathbb{R}^n. (1-\epsilon)x^T L x \leq \tilde{L} \geq (1+\epsilon)x^T L x,
+$$
+where $L=B^TWB$ and $\tilde{L}=B^T W^{1/2} S W^{1/2} B$.
+\end{lemma}
+
+
+\section{Comparing the two algorithms}
+
+\subsection{The related intution between vertex degree and effective resistance}
+
+% tension between high probability for each edge --> good approximation and low probability --> sparse graph
+
+% tension between looking at each edge once and going through a number of samples
+
+% choosing what edges are important
+
+Here we will relate the two algorithms described above and give some shared intuition. 
+
+\subsection{Combinatorics vs linear algebra}
+
+Verifying cut sparsifiers is NP-hard while verifying spectral sparsifiers is not. In spectral sparsification we have a harder problem that reduces the size of our solution set. 
+
+Why we need to partition when looking at just degree and not when looking at effective resistance. Look at the case of two complete graphs connected by one edge and how the different sampling algorithms handle this. 
+
+Here we will discuss if linear algebra is needed and contemplate replacing certain linear algebra techniques with a combinatorial analysis.
+
+\section{Conclusion}
+
+Here we give some conclusions about our project. Relating the paper to our original goals and talk about potential work in the future. 
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
