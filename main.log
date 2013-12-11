@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.6.30)  11 DEC 2013 03:13
+This is pdfTeX, Version 3.1415926-2.4-1.40.13 (TeX Live 2012) (format=pdflatex 2012.6.30)  11 DEC 2013 16:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -401,38 +401,32 @@ File: umsb.fd 2009/06/22 v3.00 AMS symbols B
 
 {/usr/local/texlive/2012/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 [2] [3] [4] [5] [6] [7] [8] [9] [10]
-<complete-graphs.png, id=174, 1355.0625pt x 645.41125pt>
+<complete-graphs.png, id=172, 1355.0625pt x 645.41125pt>
 File: complete-graphs.png Graphic file (type png)
 
 <use complete-graphs.png>
-Package pdftex.def Info: complete-graphs.png used on input line 429.
+Package pdftex.def Info: complete-graphs.png used on input line 433.
 (pdftex.def)             Requested size: 256.0748pt x 121.96957pt.
- [11 <./complete-graphs.png>]
-Overfull \hbox (5.76059pt too wide) in paragraph at lines 450--451
-\OT1/cmr/m/n/10.95 ran-dom walks. Un-for-tu-nately, this at-tempt fails be-caus
-e graphs where $\OML/cmm/m/it/10.95 ^^U[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.9
-5 D[]LD[]\OT1/cmr/m/n/10.95 )$
- []
+ [11 <./complete-graphs.png>] (./main.bbl [12])
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 465.
 
-(./main.bbl [12])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 463.
- [13]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 463.
+[13]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 465.
  (./main.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 463.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 463.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 465.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 465.
 Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: B444E40E08AE88562FC40AF75D3022E5;342.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 463.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 465.
  ) 
 Here is how much of TeX's memory you used:
- 6489 strings out of 493488
- 93106 string characters out of 3141326
- 190064 words of memory out of 3000000
- 9638 multiletter control sequences out of 15000+200000
+ 6491 strings out of 493488
+ 93146 string characters out of 3141326
+ 191083 words of memory out of 3000000
+ 9639 multiletter control sequences out of 15000+200000
  16252 words of font info for 61 fonts, out of 3000000 for 9000
  957 hyphenation exceptions out of 8191
- 32i,15n,32p,1148b,417s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 32i,15n,32p,1169b,417s stack positions out of 5000i,500n,10000p,200000b,50000s
 </usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2012/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
@@ -451,10 +445,10 @@ texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2012/t
 exmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2012/tex
 mf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/2012/texmf
 -dist/fonts/type1/public/amsfonts/cm/cmti10.pfb>
-Output written on main.pdf (13 pages, 402196 bytes).
+Output written on main.pdf (13 pages, 403024 bytes).
 PDF statistics:
- 269 PDF objects out of 1000 (max. 8388607)
- 232 compressed objects within 3 object streams
- 79 named destinations out of 1000 (max. 500000)
+ 271 PDF objects out of 1000 (max. 8388607)
+ 234 compressed objects within 3 object streams
+ 80 named destinations out of 1000 (max. 500000)
  54 words of extra memory for PDF output out of 10000 (max. 10000000)
 
