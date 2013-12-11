@@ -1,0 +1,39 @@
+\begin{thebibliography}{vLRH11}
+
+\bibitem[BK96]{benczur-karger-mincut}
+A.~Benczur and D.~Karger.
+\newblock Appoximating $s-t$ minimum cuts in ${O}(n^2)$.
+\newblock 1996.
+
+\bibitem[BSST13]{microsoft-summary}
+Joshua Batson, Daniel Spielman, Nikhil Srivastava, and Shang-Hua Teng.
+\newblock Spectral sparsification of graphs: Theory and algorithms.
+\newblock 2013.
+
+\bibitem[Cha09]{wisc-effective-resistance}
+Shuchi Chawla.
+\newblock Random walks and markov chains.
+\newblock University Lecture, 2009.
+
+\bibitem[Chu07]{cheeger}
+Fan Chung.
+\newblock Four proofs for the cheeger inequality and graph partition
+  algorithms.
+\newblock 2007.
+
+\bibitem[SS09]{spielman-effective-resistance}
+D.~Spielman and N.~Srivastava.
+\newblock Graph sparsification by effective resistances.
+\newblock 2009.
+
+\bibitem[ST10]{spielman-teng-spectralsparse}
+D.~Spielman and S.~Teng.
+\newblock Spectral sparisfication of graphs.
+\newblock 2010.
+
+\bibitem[vLRH11]{hitting-commute-time}
+Ulrike von Luxburg, Agnes Radl, and Matthias Hein.
+\newblock Hitting and commute times in large graphs are often misleading.
+\newblock 2011.
+
+\end{thebibliography}
